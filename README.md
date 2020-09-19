@@ -2,15 +2,25 @@
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents** 
 
-- [React Flux pattern with RxJS 6](#react-flux-pattern-with-rxjs-6)
-  - [What Flux is all about?](#what-flux-is-all-about)
-  - [RxJS to the rescue](#rxjs-to-the-rescue)
-    - [The main idea](#the-main-idea)
-    - [How to subscribe to a subset of events](#how-to-subscribe-to-a-subset-of-events)
-    - [Don't forget to unsubscribe](#dont-forget-to-unsubscribe)
-    - [Protect the shared state](#protect-the-shared-state)
-  - [A little bit of OOP for better encapsulation](#a-little-bit-of-oop-for-better-encapsulation)
-- [How to test this project](#how-to-test-this-project)
+- [Online TF-IDF in SpringBoot / Java 11](#online-tf-idf-in-springboot--java-11)
+  - [What TF-IDF is all about?](#what-tf-idf-is-all-about)
+    - [An essential tool for search engines](#an-essential-tool-for-search-engines)
+    - [Lucene, Elastic search and SolR](#lucene-elastic-search-and-solr)
+    - [TF equation](#tf-equation)
+    - [IDF equation](#idf-equation)
+    - [Document vector equation](#document-vector-equation)
+    - [Cosine similarity](#cosine-similarity)
+    - [Weak theoretical background](#weak-theoretical-background)
+- [This project](#this-project)
+  - [Online learning](#online-learning)
+  - [Tokenizer](#tokenizer)
+  - [Database](#database)
+    - [Vector space state](#vector-space-state)
+    - [Spring Repostiory](#spring-repostiory)
+    - [Concurrent updates](#concurrent-updates)
+    - [H2 database console](#h2-database-console)
+  - [Sparse vectors library](#sparse-vectors-library)
+  - [Output](#output)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
