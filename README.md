@@ -11,16 +11,16 @@
     - [Document vector equation](#document-vector-equation)
     - [Cosine similarity](#cosine-similarity)
     - [Weak theoretical background](#weak-theoretical-background)
-- [This project](#this-project)
-  - [Online learning](#online-learning)
-  - [Tokenizer](#tokenizer)
-  - [Database](#database)
-    - [Vector space state](#vector-space-state)
-    - [Spring Repostiory](#spring-repostiory)
-    - [Concurrent updates](#concurrent-updates)
-    - [H2 database console](#h2-database-console)
-  - [Sparse vectors library](#sparse-vectors-library)
-  - [Output](#output)
+  - [This project](#this-project)
+    - [Online learning](#online-learning)
+    - [Tokenizer](#tokenizer)
+    - [Database](#database)
+      - [Vector space state](#vector-space-state)
+      - [Spring Repostiory](#spring-repostiory)
+      - [Concurrent updates](#concurrent-updates)
+      - [H2 database console](#h2-database-console)
+    - [Sparse vectors library](#sparse-vectors-library)
+    - [Output](#output)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -89,9 +89,9 @@ It is important to emphasize that an assumption of exchangeability is not equiva
 
 So basically, TF-IDF is just an heuristic, simple to compute, which have made the success of a lot of companies. More powerful and accurate techniques (based on Bayesian probabilities) exists but they are far more complex to compute.
 
-# This project
+## This project
 
-## Online learning
+### Online learning
 
 This little project demonstrate how to compute TF-IDF on the fly. 
 
@@ -106,7 +106,7 @@ The problem:
 - If no new word is found in the incoming document, the document count is still increased by one. So **only the IDF term change**. This also mean all documents vectors must be updated.
 - Vector Space Models (VSM) are victim of the [curse of dimensionality](https://en.wikipedia.org/wiki/Curse_of_dimensionality). This mean a document contains only a small amount of word. Their vector contains a lot of 0. Because of this sparsity, it is really easy to waste a large amount of memory if you don't pay attention to it. If you want to scale, you must choose a good representation for your data.
 
-## Tokenizer
+### Tokenizer
 
 Our tokenizer is way too simple, but it will be just enough for the demo.
 
@@ -120,9 +120,9 @@ public Stream<String> tokenize(String content) {
 	}
 ```
 
-## Database
+### Database
 
-### Vector space state
+#### Vector space state
 
 We store the state of the vector space with 3 simple tables DOCUMENT,WORD and COUNTER:
 
@@ -151,7 +151,7 @@ The table **COUNTER** handle the sparsity of the data. It only contains the vect
 
 The foreign key **wordId** directly match the index of a coordinate in the vector.
 
-### Spring Repostiory
+#### Spring Repostiory
 
 The class `StateManager` is the Spring repository updating the tables using `JdbcTemplate`. 
 
@@ -160,7 +160,7 @@ The class `StateManager` is the Spring repository updating the tables using `Jdb
 
 We tried to compute the tf-idf without collecting all the data in memory. This is why we used the method `JdbcTemplate::query` that return `void` instead of a list of records.
 
-### Concurrent updates
+#### Concurrent updates
 
 We want to insert a record in a table only if it is not in there, in one shot. This is important if we plan to scan multiple documents in parallel. We do that with **MERGE INTO**. 
 
@@ -186,7 +186,7 @@ WHEN MATCHED THEN
 	UPDATE SET COUNT = COUNT+1
 ```
 
-### H2 database console
+#### H2 database console
 
 The H2 console is enable in `src/main/resources/application.properties`
 
@@ -197,7 +197,7 @@ password: password
 jdbc url: jdbc:h2:file:./data/tfidf
 ```
 
-## Sparse vectors library
+### Sparse vectors library
 
 There is a lot of API to do vectors and matrices calculations in Java. You can go [here](https://java-matrix.org/) and [there](http://lessthanoptimal.github.io/Java-Matrix-Benchmark/). I tested ojAlgo and Mtj. [Mtj](https://github.com/fommil/matrix-toolkits-java) is really great to handle sparse matrices  whereas with [ojAlgo](https://www.ojalgo.org/) I had an outOfMemory error. My use case was 41157  vectors with 20127 dimensions.
 
@@ -256,7 +256,7 @@ private Double computeSimilarity(Document d1,Document d2)
 	return cosineSimilarity;
 }
 ```
-## Output
+### Output
 
 Each time you add a new document, we log all the siblings for all documents with their similarity score. If a new word is detected it will be logged.
 
