@@ -3,7 +3,7 @@
 
 [1.1 What TF-IDF is all about?](#11-what-tf-idf-is-all-about)  
 [1.1.1 An essential tool for search engines](#111-an-essential-tool-for-search-engines)  
-[1.1.2 Lucene, Elastic search and SolR](#112-lucene--elastic-search-and-solr)  
+[1.1.2 Lucene, Elastic search and SolR](#112-lucene-elastic-search-and-solr)  
 [1.1.3 TF equation](#113-tf-equation)  
 [1.1.4 IDF equation](#114-idf-equation)  
 [1.1.5 Document vector equation](#115-document-vector-equation)  
