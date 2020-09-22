@@ -1,77 +1,50 @@
 # Online TF-IDF in SpringBoot / Java 11
-**Table of content**
 
-[1.1 What TF-IDF is all about?](#11-what-tf-idf-is-all-about)  
-[1.1.1 An essential tool for search engines](#111-an-essential-tool-for-search-engines)  
-[1.1.2 Lucene, Elastic search and SolR](#112-lucene--elastic-search-and-solr)  
-[1.1.3 TF equation](#113-tf-equation)  
-[1.1.4 IDF equation](#114-idf-equation)  
-[1.1.5 Document vector equation](#115-document-vector-equation)  
-[1.1.6 Cosine similarity](#116-cosine-similarity)  
-[1.1.7 Weak theoretical background](#117-weak-theoretical-background)  
-  
-  
-[2 This project](#2-this-project)  
-[2.1 Online learning](#21-online-learning)  
-[2.2 Tokenizer](#22-tokenizer)  
-[2.3 Database](#23-database)  
-[2.3.1 Vector space state](#231-vector-space-state)  
-[2.3.2 Spring Repostiory](#232-spring-repostiory)  
-[2.3.3 Concurrent updates](#233-concurrent-updates)  
-[2.3.4 H2 database console](#234-h2-database-console)  
-  
-  
-[2.4 Sparse vectors library](#24-sparse-vectors-library)  
-[2.5 Output](#25-output)  
+## What TF-IDF is all about?
 
-
-
-
-## 1.1 What TF-IDF is all about?
-
-### 1.1.1 An essential tool for search engines
+### An essential tool for search engines
 
 **TF-IDF** comes from information retrieval (IR) community. It's a way to represent a document in what is called a vector space (This is part of the **Vector Space Models**, VSM). Each dimension correspond to a word (or term) that can be found in a document. A document is a vector starting from the origin of the space and ending to the TF-IDF coordinates. When you query a search engine, what you type is converted in such vector. The final step is to found document vectors that **point to the same direction** than your query vector. The **[cosine similarity](https://en.wikipedia.org/wiki/Cosine_similarity)** is used for that. It's all about angles.
 
-### 1.1.2 Lucene, Elastic search and SolR
+### Lucene, Elastic search and SolR
 
 TF-IDF and Cosine similarity is at the heart of Apache lucene search engine. Two famous search engines are build on top of it:
 
 - **Elasticsearch** is used by Netflix, Tinder, Stackoverflow, Linkedin, Medium
 - **Apache SoIR** is used by Adobe, eBay, Netflix, Instagram
 
-### 1.1.3 TF equation
+### TF equation
 
 For a given document **d**, containing **N** terms, we define the term frequency as:
 
-<img src="assets/formula-11.svg" align="top"/>
+$$TF_{d}(term) = \frac{Count_{d}(term)}{\sum _{1} ^{N}Count_{d}(t)}$$
 
 It's just a normalized count of a term in a document. TF is in the range [0,1].
 
-### 1.1.4 IDF equation
+### IDF equation
 
 For a given corpus of **N** documents, we define the inverse document frequency as:
 
-<img src="assets/formula-12.svg" align="top"/>
+$$IDF(term) = 1+log(\frac{N}{DocCount(term)})$$
 
 Where `DocCount(term)` is simply how many documents contains the term.
 
-### 1.1.5 Document vector equation
+### Document vector equation
 
 For a vector space with **M** dimensions (or terms), we define the vector of a document **d** as:
 
-<img src="assets/formula-13.svg" align="top"/>
+$$\overrightarrow{V_d} = (TF_d(t_1)*IDF(t_1),TF_d(t_2)*IDF(t_2),...,TF_d(t_M)*IDF(t_M))$$
 
 As you can see, the IDF act as a weight over all TF coordinates. 
 
 - If the term is rare, its IDF is high
 - If the term is not in the document, the TF is 0
 
-### 1.1.6 Cosine similarity
+### Cosine similarity
 
 Given two documents vector D1 and D2, we define the cosine similarity as:
 
-<img src="assets/formula-14.svg" align="top"/>
+$$CS(\overrightarrow{D_1},\overrightarrow{D_2})=\frac{\overrightarrow{D_1}.\overrightarrow{D_2}}{\left \| \overrightarrow{D_1}\left \| . \right \| \overrightarrow{D_2}\right \|}=cos(\theta )$$
 
 It is basically the cosine of the angle between the two vectors. It is theoretically in the range [-1,1], but in our context it is in the range [0,1]
 
@@ -80,7 +53,7 @@ It is basically the cosine of the angle between the two vectors. It is theoretic
 
 See [wikipedia](https://en.wikipedia.org/wiki/Cosine_similarity) for more information.
 
-### 1.1.7 Weak theoretical background
+### Weak theoretical background
 
 The IR community have struggled for years to found a strong mathematical justification of TF-IDF. See [IR Models: Foundations and Relationships](http://www.eecs.qmul.ac.uk/~thor/2012/2012-SIGIR-Tutorial-IR-Models-Foundations-Relationships.pdf) by Thomas Roelleke for a global overview. On the other side of the spectrum, you have Michael I. Jordan (multi awarded AI researcher identified as the "most influential computer scientist" in 2016) considering it as a **thorough muddle** from a statistical point of view. You can listen to him [here](https://youtu.be/fBNsHPtTAGs?t=429). He worked a lot on probabilistic modeling of documents, especially on Latent Dirichlet Allocation (LDA). See [this paper](https://www.jmlr.org/papers/volume3/blei03a/blei03a.pdf) of instance. For Jordan, the main issue of the IR community is that they have no idea about **the De finetti theorem and exchangeability**. It's a typical Bayesian perspective whereas TF-IDF is a frequentist perspective.
 
@@ -89,9 +62,9 @@ The IR community have struggled for years to found a strong mathematical justifi
 
 So basically, TF-IDF is just an heuristic, simple to compute, which have made the success of a lot of companies. More powerful and accurate techniques (based on Bayesian probabilities) exists but they are far more complex to compute.
 
-# 2 This project
+# This project
 
-## 2.1 Online learning
+## Online learning
 
 This little project demonstrate how to compute TF-IDF on the fly. 
 
@@ -106,7 +79,7 @@ The problem:
 - If no new word is found in the incoming document, the document count is still increased by one. So **only the IDF term change**. This also mean all documents vectors must be updated.
 - Vector Space Models (VSM) are victim of the [curse of dimensionality](https://en.wikipedia.org/wiki/Curse_of_dimensionality). This mean a document contains only a small amount of word. Their vector contains a lot of 0. Because of this sparsity, it is really easy to waste a large amount of memory if you don't pay attention to it. If you want to scale, you must choose a good representation for your data.
 
-## 2.2 Tokenizer
+## Tokenizer
 
 Our tokenizer is way too simple, but it will be just enough for the demo.
 
@@ -120,9 +93,9 @@ public Stream<String> tokenize(String content) {
 	}
 ```
 
-## 2.3 Database
+## Database
 
-### 2.3.1 Vector space state
+### Vector space state
 
 We store the state of the vector space with 3 simple tables DOCUMENT,WORD and COUNTER:
 
@@ -151,7 +124,7 @@ The table **COUNTER** handle the sparsity of the data. It only contains the vect
 
 The foreign key **wordId** directly match the index of a coordinate in the vector.
 
-### 2.3.2 Spring Repostiory
+### Spring Repostiory
 
 The class `StateManager` is the Spring repository updating the tables using `JdbcTemplate`. 
 
@@ -160,7 +133,7 @@ The class `StateManager` is the Spring repository updating the tables using `Jdb
 
 We tried to compute the tf-idf without collecting all the data in memory. This is why we used the method `JdbcTemplate::query` that return `void` instead of a list of records.
 
-### 2.3.3 Concurrent updates
+### Concurrent updates
 
 We want to insert a record in a table only if it is not in there, in one shot. This is important if we plan to scan multiple documents in parallel. We do that with **MERGE INTO**. 
 
@@ -186,7 +159,7 @@ WHEN MATCHED THEN
 	UPDATE SET COUNT = COUNT+1
 ```
 
-### 2.3.4 H2 database console
+### H2 database console
 
 The H2 console is enable in `src/main/resources/application.properties`
 
@@ -197,7 +170,7 @@ password: password
 jdbc url: jdbc:h2:file:./data/tfidf
 ```
 
-## 2.4 Sparse vectors library
+## Sparse vectors library
 
 There is a lot of API to do vectors and matrices calculations in Java. You can go [here](https://java-matrix.org/) and [there](http://lessthanoptimal.github.io/Java-Matrix-Benchmark/). I tested ojAlgo and Mtj. [Mtj](https://github.com/fommil/matrix-toolkits-java) is really great to handle sparse matrices  whereas with [ojAlgo](https://www.ojalgo.org/) I had an outOfMemory error. My use case was 41157  vectors with 20127 dimensions.
 
@@ -256,7 +229,7 @@ private Double computeSimilarity(Document d1,Document d2)
 	return cosineSimilarity;
 }
 ```
-## 2.5 Output
+## Output
 
 Each time you add a new document, we log all the siblings for all documents with their similarity score. If a new word is detected it will be logged.
 
