@@ -12,6 +12,15 @@ public class Document {
 	private SparseVector vector;
 	private List<DocumentSibling> siblings = List.of();
 	
+	public Document() {
+		
+	}
+	
+	public Document(Long id, String title) {
+		super();
+		this.id = id;
+		this.title = title;
+	}
 	public SparseVector getVector() {
 		return vector;
 	}

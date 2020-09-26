@@ -4,9 +4,11 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLIntegrityConstraintViolationException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -16,6 +18,7 @@ import java.util.stream.IntStream;
 import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -33,7 +36,7 @@ public class StateManager {
 	private JdbcTemplate jdbcTemplate;
 
 	@Autowired
-	public void setDataSource(DataSource dataSource) {
+	private void setDataSource(DataSource dataSource) {
 		this.jdbcTemplate = new JdbcTemplate(dataSource);
 	}
 
@@ -41,23 +44,18 @@ public class StateManager {
 	private Tokenizer tokenizer;
 
 	public List<Document> updateState(Document document) {
-		Long idDoc = createOrGetDocument(document);
-		if (idDoc != null) {
+
+		createOrGetDocument(document).ifPresentOrElse(idDoc -> {
 			document.setId(idDoc);
 			tokenizer.tokenize(document.getContent())
 					.forEach(word -> this.updateStateFromWord(document, word));
-		} else {
-			logger.warning("Document ignored");
-		}
+		}, () -> logger.warning("Document ignored"));
 
 		return computeTfIdf();
 	}
 
 	private void updateStateFromWord(Document doc, String word) {
-		Long id = createOrGetWord(word);
-
-		createOrUpdateCounter(doc.getId(), id);
-
+		createOrGetWord(word).ifPresent(id -> createOrUpdateCounter(doc.getId(), id));
 	}
 
 	private List<Document> computeTfIdf() {
@@ -67,8 +65,8 @@ public class StateManager {
 		// get the size of the vector space (how many dimensions)
 		// we prefer MAX(ID) in case we remove elements for whatever reason
 		// in this way the ID of a word is always a valid index in the vector
-		// Long wordCount = jdbcTemplate.queryForObject("SELECT count(*) from WORD",
-		// Long.class); // risky
+		// Long wordCount = jdbcTemplate.queryForObject("SELECT count(*) from
+		// WORD",Long.class); // risky
 		Long wordCount = jdbcTemplate.queryForObject("SELECT MAX(ID) from WORD", Long.class); // robust
 
 		// here we hit the RAM if there are tons of documents, we could store the TFIDF
@@ -191,69 +189,98 @@ public class StateManager {
 		return idf;
 	}
 
-	private Long createOrGetDocument(Document doc) {
+	private Optional<Long> createDocument(Document doc) {
 		try (Connection connection = jdbcTemplate.getDataSource()
 				.getConnection()) {
-			PreparedStatement stmt = connection.prepareStatement("MERGE INTO DOCUMENT AS W " + "USING (SELECT '"
-					+ doc.getTitle() + "' NEWNAME) AS S ON W.NAME=S.NEWNAME " + "WHEN NOT MATCHED THEN "
-					+ "INSERT (NAME) VALUES(?) ", Statement.RETURN_GENERATED_KEYS);
+			PreparedStatement stmt = connection.prepareStatement("INSERT INTO DOCUMENT (NAME) VALUES(?) ",
+					Statement.RETURN_GENERATED_KEYS);
 			stmt.setString(1, doc.getTitle());
 			int count = stmt.executeUpdate();
 			if (count == 1) {
 				try (ResultSet key = stmt.getGeneratedKeys()) {
 					if (key.next()) {
 						logger.info("New document: " + doc.getTitle());
-						return key.getLong(1);
+						return Optional.of(key.getLong(1));
 					}
 				}
 			} else {
-				logger.info("Document already indexed:" + doc.getTitle());
-				return null;
+				logger.severe("Document already indexed:" + doc.getTitle());
 			}
 		} catch (SQLException error) {
 			logger.log(Level.SEVERE, "Unexpected error", error);
 		}
-		return null;
+		return Optional.empty();
 	}
 
-	private Long createOrGetWord(String word) {
+	private Optional<Long> createOrGetDocument(Document doc) {
+		return getDocumentId(doc.getTitle()).or(() -> createDocument(doc));
+	}
+
+	private Optional<Long> createWord(String word) {
 		try (Connection connection = jdbcTemplate.getDataSource()
 				.getConnection()) {
-			PreparedStatement stmt = connection
-					.prepareStatement(
-							"MERGE INTO WORD AS W " + "USING (SELECT '" + word + "' NEWNAME) AS S ON W.NAME=S.NEWNAME "
-									+ "WHEN NOT MATCHED THEN " + "INSERT (NAME) VALUES(?) ",
-							Statement.RETURN_GENERATED_KEYS);
+			PreparedStatement stmt = connection.prepareStatement("INSERT INTO WORD (NAME) VALUES(?) ",
+					Statement.RETURN_GENERATED_KEYS);
 			stmt.setString(1, word);
 			int count = stmt.executeUpdate();
 			if (count == 1) {
 				try (ResultSet key = stmt.getGeneratedKeys()) {
 					if (key.next()) {
 						logger.info("New word: " + word);
-						return key.getLong(1);
+						return Optional.of(key.getLong(1));
 					}
 				}
-			} else {
-				return jdbcTemplate.queryForObject("SELECT ID FROM WORD WHERE NAME=?", new Object[] { word },
-						(rs, rowNum) -> rs.getLong(1));
+			}
+		} catch (SQLIntegrityConstraintViolationException error) {
+			// Concurrent insert, we just select then
+			return getWordId(word);
+		} catch (SQLException error) {
+			logger.log(Level.SEVERE, "Unexpected error", error);
+		}
+		return Optional.empty();
+	}
+
+	private Optional<Long> createOrGetWord(String word) {
+		return getWordId(word).or(() -> createWord(word));
+	}
+
+	private Optional<Long> getWordId(String word) {
+		try {
+			return Optional.of(jdbcTemplate.queryForObject("SELECT ID FROM WORD WHERE NAME=?", new Object[] { word },
+					(rs, rowNum) -> rs.getLong(1)));
+		} catch (EmptyResultDataAccessException e) {
+			return Optional.empty();
+		}
+	}
+
+	private Optional<Long> getDocumentId(String name) {
+		try {
+			return Optional.of(jdbcTemplate.queryForObject("SELECT ID FROM DOCUMENT WHERE NAME=?",
+					new Object[] { name }, (rs, rowNum) -> rs.getLong(1)));
+		} catch (EmptyResultDataAccessException e) {
+			return Optional.empty();
+		}
+	}
+
+	private void createOrUpdateCounter(Long docId, Long wordId) {
+		try {
+			try (Connection connection = jdbcTemplate.getDataSource()
+					.getConnection()) {
+				// UPSERT using MERGE (NOTE: this is not atomic!)
+				PreparedStatement stmt = connection.prepareStatement("MERGE INTO COUNTER AS W " + "USING (SELECT "
+						+ docId + " NEWDOCID, " + wordId + " NEWWORDID) AS S "
+						+ "ON (W.DOCID=S.NEWDOCID AND W.WORDID=S.NEWWORDID) " + "WHEN NOT MATCHED THEN "
+						+ "INSERT (DOCID,WORDID,COUNT) VALUES (S.NEWDOCID,S.NEWWORDID,1) " + "WHEN MATCHED THEN "
+						+ "UPDATE SET COUNT = COUNT+1 ");				
+				stmt.executeUpdate();
+				throw new EmptyResultDataAccessException(0);
+			} catch (EmptyResultDataAccessException e) {
+				// Concurrent INSERT
+				jdbcTemplate.update("UPDATE COUNTER SET COUNT = COUNT+1 WHERE DOCID=? AND WORDID=?",
+						new Object[] { docId, wordId });
 			}
 		} catch (SQLException error) {
 			logger.log(Level.SEVERE, "Unexpected error", error);
 		}
-		return null;
-	}
-
-	private Long createOrUpdateCounter(Long docId, Long wordId) {
-		try (Connection connection = jdbcTemplate.getDataSource()
-				.getConnection()) {
-			PreparedStatement stmt = connection.prepareStatement("MERGE INTO COUNTER AS W " + "USING (SELECT " + docId
-					+ " NEWDOCID, " + wordId + " NEWWORDID) AS S " + "ON (W.DOCID=S.NEWDOCID AND W.WORDID=S.NEWWORDID) "
-					+ "WHEN NOT MATCHED THEN " + "INSERT (DOCID,WORDID,COUNT) VALUES (S.NEWDOCID,S.NEWWORDID,1) "
-					+ "WHEN MATCHED THEN " + "UPDATE SET COUNT = COUNT+1 ");
-			stmt.executeUpdate();
-		} catch (SQLException error) {
-			logger.log(Level.SEVERE, "Unexpected error", error);
-		}
-		return null;
 	}
 }
