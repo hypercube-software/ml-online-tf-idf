@@ -102,12 +102,14 @@ We store the state of the vector space with 3 simple tables DOCUMENT,WORD and CO
 ```sql
 CREATE TABLE IF NOT EXISTS DOCUMENT  (
 	  id INT AUTO_INCREMENT  PRIMARY KEY,
-	  name VARCHAR(250) NOT NULL
+	  name VARCHAR(250) NOT NULL,
+	  unique(name)
 	);
 
 CREATE TABLE IF NOT EXISTS WORD  (
 	  id INT AUTO_INCREMENT  PRIMARY KEY,
-	  name VARCHAR(250) NOT NULL
+	  name VARCHAR(250) NOT NULL,
+	  unique(name)
 	);
 	
 CREATE TABLE IF NOT EXISTS COUNTER  (
@@ -135,19 +137,20 @@ We tried to compute the tf-idf without collecting all the data in memory. This i
 
 ### Concurrent updates
 
-We want to insert a record in a table only if it is not in there, in one shot. This is important if we plan to scan multiple documents in parallel. We do that with **MERGE INTO**. 
+We want to insert a record in a table only if it is not in there, and update it otherwise. This is important if we plan to scan multiple documents in parallel. This is called an **UPSERT** and unfortunately there is no simple way to do it without a performance penalty.
 
-Here is an example for the table WORD:
+- You can lock on the query side (in Java), but this is not gonna work if your application is running multiple times in a cluster for availability.
+- You can lock a selected row in the table with SELECT FOR UPDATE, this is called **pessimistic lock**
+- You can avoid any lock but use a version in each record to know when your data is stale. this is called **optimistic lock**
+- Beyond all of that, it is also interesting to bring the whole UPSERT to the DB engine and not the inverse. This avoid multiple calls between the DB client and the DB server. This is where MERGE INTO can be used.
 
-```sql
-MERGE INTO WORD AS W 
-USING (SELECT 'hello' NEWNAME) AS S 
-ON W.NAME=S.NEWNAME 
-WHEN NOT MATCHED THEN 
-INSERT (NAME) VALUES('hello')
-```
+We use **MERGE INTO** to perform an **UPSERT** the closest to the DB engine. Note that **MERGE is not atomic**. 
 
-Things are similar when we want to update the counter of a term (id 12) for a given document (id 143) in table COUNTER:
+- We will let the index raise an error in case of concurrent INSERT. In this case we retry with a simple UPDATE.
+- This way of working is only based on the assumption that there are small chances to have a concurrent UPSERT.
+- We could do that without MERGE, with simple if-statement on Java side but the chances would be higher.
+
+We want to update the counter of a term (id 12) for a given document (id 143) in table COUNTER. This is a typical UPSERT.
 
 ```sql
 MERGE INTO COUNTER AS W 
@@ -158,6 +161,8 @@ WHEN NOT MATCHED THEN
 WHEN MATCHED THEN 
 	UPDATE SET COUNT = COUNT+1
 ```
+
+We have also another scenario when we want to update the dictionary (table WORD). We want to "select or insert". Unfortunately this is not possible with MERGE. So we will just do that in Java with multiple JDBC calls. Adding a new Document is the same case.
 
 ### H2 database console
 
