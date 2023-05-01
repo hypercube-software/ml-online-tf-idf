@@ -1,31 +1,25 @@
 # Online TF-IDF in SpringBoot / Java 11
 **Table of content**
 
-[1.1 What TF-IDF is all about?](#11-what-tf-idf-is-all-about)  
-[1.1.1 An essential tool for search engines](#111-an-essential-tool-for-search-engines)  
-[1.1.2 Lucene, Elastic search and SolR](#112-lucene-elastic-search-and-solr)  
-[1.1.3 TF equation](#113-tf-equation)  
-[1.1.4 IDF equation](#114-idf-equation)  
-[1.1.5 Document vector equation](#115-document-vector-equation)  
-[1.1.6 Cosine similarity](#116-cosine-similarity)  
-[1.1.7 Weak theoretical background](#117-weak-theoretical-background)  
-  
-  
+[1 Online TF-IDF in SpringBoot / Java 11](#online-tf-idf-in-springboot--java-11)  
+&nbsp;&nbsp;&nbsp;&nbsp;[1.1 What TF-IDF is all about?](#11-what-tf-idf-is-all-about)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.1.1 An essential tool for search engines](#111-an-essential-tool-for-search-engines)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.1.2 Lucene, Elastic search and SolR](#112-lucene-elastic-search-and-solr)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.1.3 TF equation](#113-tf-equation)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.1.4 IDF equation](#114-idf-equation)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.1.5 Document vector equation](#115-document-vector-equation)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.1.6 Cosine similarity](#116-cosine-similarity)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[1.1.7 Weak theoretical background](#117-weak-theoretical-background)  
 [2 This project](#2-this-project)  
-[2.1 Online learning](#21-online-learning)  
-[2.2 Tokenizer](#22-tokenizer)  
-[2.3 Database](#23-database)  
-[2.3.1 Vector space state](#231-vector-space-state)  
-[2.3.2 Spring Repostiory](#232-spring-repostiory)  
-[2.3.3 Concurrent updates](#233-concurrent-updates)  
-[2.3.4 H2 database console](#234-h2-database-console)  
-  
-  
-[2.4 Sparse vectors library](#24-sparse-vectors-library)  
-[2.5 Output](#25-output)  
-
-
-
+&nbsp;&nbsp;&nbsp;&nbsp;[2.1 Online learning](#21-online-learning)  
+&nbsp;&nbsp;&nbsp;&nbsp;[2.2 Tokenizer](#22-tokenizer)  
+&nbsp;&nbsp;&nbsp;&nbsp;[2.3 Database](#23-database)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.3.1 Vector space state](#231-vector-space-state)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.3.2 Spring Repostiory](#232-spring-repostiory)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.3.3 Concurrent updates](#233-concurrent-updates)  
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[2.3.4 H2 database console](#234-h2-database-console)  
+&nbsp;&nbsp;&nbsp;&nbsp;[2.4 Sparse vectors library](#24-sparse-vectors-library)  
+&nbsp;&nbsp;&nbsp;&nbsp;[2.5 Output](#25-output)  
 
 ## 1.1 What TF-IDF is all about?
 
